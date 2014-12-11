@@ -20,7 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 		$DB = new PDO(sprintf("mysql:host=%s;dbname=%s", $config['host'], $config['name']), $config['user'], $config['password']);
 
-		$query = $DB->query('SHOW TABLES');
+		$table = $config['name'];
+		$query = $DB->prepare('SELECT table_name, table_comment FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = :table');
+		$query->bindParam(':table', $table, PDO::PARAM_STR);
+		$query->execute();
 
 		$tables = $query->fetchAll(PDO::FETCH_ASSOC);
 
@@ -51,9 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			markdown_format_table_markdown($results);
 			markdown_format_table_html($results);
 		}
-
-		markdown_append('Documentation generated at ' . (new DateTime('now'))->format('Y-m-d g:i:s'));
-		//markdown_append_html();
+		$now = 'Documentation generated at ' . (new DateTime('now'))->format('Y-m-d g:i:s');
+		markdown_append($now);
+		markdown_append_html($now);
 
 	} catch(Exception $e) {
 		print_r($e);
@@ -93,13 +96,13 @@ function markdown_append_html($string, $newline = false) {
  * @param array $tables List of table names
  */
 function markdown_format_table_list_markdown($tables) {
-	markdown_append('|Table Name|', true);
-	markdown_append('|---|', true);
+	markdown_append('|Table Name|Table Comment', true);
+	markdown_append('|---|---|', true);
 
 	foreach($tables as $table) {
-		$table = array_values($table)[0];
 		
-		markdown_append('|' . sprintf('[%s](#%s)', $table, $table) . '|', true);
+		markdown_append('|' . sprintf('[%s](#%s)', $table['table_name'], $table['table_name']) . '|');
+		markdown_append($table['table_comment'] . '|', true);
 	}
 }
 
@@ -146,15 +149,14 @@ function markdown_format_table_markdown($data) {
 function markdown_format_table_list_html($tables) {
 	markdown_append_html('<table>', true);
 	markdown_append_html('<thead>', true);
-	markdown_append_html('<tr><th>Table Name</th></tr>', true);
+	markdown_append_html('<tr><th>Table Name</th><th>Table Comment</th></tr>', true);
 	markdown_append_html('</thead>', true);
 
 	markdown_append_html('<tbody>', true);
 	foreach($tables as $table) {
-		$table = array_values($table)[0];
-
 		markdown_append_html('<tr>', true);
-		markdown_append_html('<td>' . sprintf('<a href="#%s">%s</a>', $table, $table) . '</td>', true);
+		markdown_append_html('<td>' . sprintf('<a href="#%s">%s</a>', $table['table_name'], $table['table_name']) . '</td>', true);
+		markdown_append_html('<td>' . $table['table_comment'] . '</td>', true);
 		markdown_append_html('</tr>', true);
 	}
 	markdown_append_html('</tbody>', true);
