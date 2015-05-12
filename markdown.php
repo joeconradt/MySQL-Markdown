@@ -29,6 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 		markdown_format_table_list_markdown($tables);
 		markdown_format_table_list_html($tables);
+		
+		$reverse_null = $config['reverse_null'][0];
+		
+		if($reverse_null){
+			$config['columns'][] = "Required";
+		}
 
 		foreach($tables as $table) {
 			$table = array_values($table)[0];
@@ -44,6 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			$results = $query->fetchAll(PDO::FETCH_ASSOC);
 
 			foreach($results as &$result) {
+				if($reverse_null){
+					$result = replace_key_function($result,"Null","Required");
+				}
 				foreach($result as $column_name => $column) {
 					if(!in_array($column_name, $config['columns'])) {
 						unset($result[$column_name]);
@@ -67,6 +76,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else {
 	markdown_form_template();
 }
+
+/**
+ * @param array $array
+ * @param string $key1
+ * @param string $key2
+ */
+
+function replace_key_function($array, $key1, $key2)
+{
+    $keys = array_keys($array);
+    $index = array_search($key1, $keys);
+
+    if ($index !== false) {
+        $keys[$index] = $key2;
+        $array = array_combine($keys, $array);
+    }
+
+    return $array;
+}
+
 
 /**
  * @param string $string
@@ -136,6 +165,9 @@ function markdown_format_table_markdown($data) {
 		foreach($result as $column_name => $column_data) {
 			if($config['bold_field'][0] == 1 && $column_name == 'Field') {
 				$column_data = '**' . $column_data . '**';
+			}
+			if($config['reverse_null'][0] == 1 && $column_name == "Required"){
+				$column_data = $column_data == "NO" ? "YES" : "NO";
 			}
 			markdown_append($column_data . '|');
 		}
@@ -391,6 +423,17 @@ function markdown_form_template() {
 									</label>
 									<label class="radio-inline">
 										<input type="radio" name="bold_field[]" value="0" checked="checked"> No
+									</label>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-3 control-label">Reverse Null to required</label>
+								<div class="col-sm-9">
+									<label class="radio-inline">
+										<input type="radio" name="reverse_null[]" value="1"> Yes
+									</label>
+									<label class="radio-inline">
+										<input type="radio" name="reverse_null[]" value="0" checked="checked"> No
 									</label>
 								</div>
 							</div>
